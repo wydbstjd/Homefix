@@ -1,6 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from efficientnet import run_pipeline, load_model
+from efficientnet import (
+    run_pipeline,
+    load_model,
+    problems,
+    inv_location_map,
+    valid_location_scope,
+)
 from nlp.main import return_solution, chat_with_ai, get_supplies_for_problem  # ← GPT 기반 해결책 생성 함수 및 채팅 함수
 from PIL import Image
 from pydantic import BaseModel
@@ -42,6 +48,10 @@ class ImageBase64Request(BaseModel):
 class ChatRequest(BaseModel):
     message: str
 
+class SolveRequest(BaseModel):
+    problem: str
+    location: str
+
 
 @app.get("/server-info/")
 async def get_server_info():
@@ -63,17 +73,22 @@ async def analyze(data: ImageBase64Request):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"이미지 처리 실패: {str(e)}")
 
-    # 문제 유형 + 위치 예측
-    problem, location = run_pipeline(image, model=model)
-    print("문제:", problem, "위치:", location)
-    
-    # 해결책 생성 및 매칭된 전체 문제명 확보
-    solution, selected_problem = return_solution(problem, location)
+    # 모델로 문제 유형만 예측 (위치는 반환하지 않음)
+    predicted_problem, _predicted_location_ignored = run_pipeline(image, model=model)
+    print("문제:", predicted_problem)
+
+    # 문제 인덱스 기반으로 유효 위치 옵션 계산
+    try:
+        problem_idx = problems.index(predicted_problem)
+    except ValueError:
+        raise HTTPException(status_code=500, detail="알 수 없는 문제 라벨")
+
+    valid_indices = valid_location_scope.get(problem_idx, [])
+    location_options = [inv_location_map[i] for i in valid_indices]
 
     return {
-        "problem": selected_problem,
-        "location": location,
-        "solution": solution
+        "problem": predicted_problem,
+        "location_options": location_options,
     }
 
 @app.post("/chat/")
@@ -84,6 +99,18 @@ async def chat(data: ChatRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"채팅 처리 실패: {str(e)}")
+
+@app.post("/solve/")
+async def solve(req: SolveRequest):
+    try:
+        solution, selected_problem = return_solution(req.problem, req.location)
+        return {
+            "problem": selected_problem,
+            "location": req.location,
+            "solution": solution,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"해결책 생성 실패: {str(e)}")
 
 
 # ------------------------ 제품 추천 (Google Custom Search API) ------------------------ #

@@ -15,12 +15,12 @@ from torchvision import models
 # ------------------------- 모델 정의 ------------------------- #
 # 1. EfficientNetV2Model 클래스 정의
 class EfficientNetV2Model(nn.Module):
-    def __init__(self, num_labels, num_locations, model_name='efficientnetv2_m'):
+    def __init__(self, num_labels):
         super().__init__()
-        self.backbone = models.efficientnet_v2_m(pretrained=True)
+        self.backbone = models.efficientnet_v2_m(weights=models.EfficientNet_V2_M_Weights.IMAGENET1K_V1)
         feature_dim = self.backbone.classifier[-1].in_features
+        self.backbone.classifier = nn.Identity()
 
-        # Head: 간단한 MLP + Dropout (특징 벡터를 바로 사용)
         self.label_head = nn.Sequential(
             nn.Linear(feature_dim, 256),
             nn.ReLU(),
@@ -28,25 +28,10 @@ class EfficientNetV2Model(nn.Module):
             nn.Linear(256, num_labels)
         )
 
-        self.loc_head = nn.Sequential(
-            nn.Linear(feature_dim, 256),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(256, num_locations)
-        )
-
     def forward(self, x):
-
-        original_classifier = self.backbone.classifier
-        self.backbone.classifier = nn.Identity()
-
         features = self.backbone(x)
-
-        self.backbone.classifier = original_classifier
-
         label_out = self.label_head(features)
-        loc_out = self.loc_head(features)
-        return label_out, loc_out
+        return label_out
 
 
 # ------------------------- 설정 ------------------------- #
@@ -72,18 +57,16 @@ valid_location_scope = {
 }
 
 transform = transforms.Compose([
-    transforms.Resize((384, 384), interpolation=InterpolationMode.BILINEAR),
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(15),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+    transforms.Resize(384),
+    transforms.CenterCrop(384),
     transforms.ToTensor(),
-    transforms.Normalize([0.485,0.456,0.406],[0.229,0.224,0.225])
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
 
 # ------------------------- 모델 로딩 ------------------------- #
 def load_model(weight_path='best_model.pt'):
-    model = EfficientNetV2Model(num_labels=7, num_locations=len(location_map))
+    model = EfficientNetV2Model(num_labels=7)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     model.to(device)
     model.eval()
@@ -100,17 +83,11 @@ def predict_image(model, image_path_or_pil):
     image = transform(image).unsqueeze(0).to(device)
 
     with torch.no_grad():
-        label_out, loc_out = model(image)
-
+        label_out = model(image)
         pred_label_idx = torch.argmax(label_out, dim=1).item()
 
-        # 유효 위치 마스킹
-        valid_indices = valid_location_scope[pred_label_idx]
-        masked_loc_out = torch.full_like(loc_out, -1e9)
-        masked_loc_out[:, valid_indices] = loc_out[:, valid_indices]
-        pred_loc_idx = torch.argmax(masked_loc_out, dim=1).item()
-
-    return pred_label_idx, pred_loc_idx
+    # 위치는 더 이상 모델이 예측하지 않음
+    return pred_label_idx, None
 
 
 # ------------------------- 파이프라인 함수 ------------------------- #
@@ -121,7 +98,7 @@ def run_pipeline(image_path_or_pil, model=None):
     pred_label, pred_loc = predict_image(model, image_path_or_pil)
 
     pred_label_name = problems[pred_label]
-    pred_loc_name = inv_location_map[pred_loc]
+    pred_loc_name = inv_location_map[pred_loc] if pred_loc is not None else None
 
     return pred_label_name, pred_loc_name
 
