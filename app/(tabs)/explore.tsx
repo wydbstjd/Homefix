@@ -18,7 +18,11 @@ import {
   View,
   Animated,
 } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
@@ -27,6 +31,7 @@ const panelWidth = width * 0.7;
 export default function ExploreScreen() {
   const { themeColors, fontSizeMultiplier, isDarkMode } = useTheme();
   const params = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   const [base64Data, setBase64Data] = useState<string | null>(null);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [showImagePicker, setShowImagePicker] = useState(false); // 처음에는 모달 숨김
@@ -289,6 +294,7 @@ export default function ExploreScreen() {
             <ScrollView
               style={styles.content}
               showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
             >
               <View style={styles.imageContainer}>
                 <Image
@@ -436,6 +442,7 @@ export default function ExploreScreen() {
             <ScrollView
               style={styles.content}
               showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
             >
               <View style={styles.imageContainer}>
                 <Image
