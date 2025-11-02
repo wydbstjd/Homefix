@@ -382,7 +382,7 @@ export default function ExploreScreen() {
                     },
                   ]}
                 >
-                  분석 및 해결책 생성 중...
+                  분석 중...
                 </Text>
               </View>
             </ScrollView>
