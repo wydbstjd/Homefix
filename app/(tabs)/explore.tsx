@@ -132,7 +132,7 @@ export default function ExploreScreen() {
       });
 
       const { problem, location } = analyzeResponse.data || {};
-      
+
       if (!problem || !location) {
         Alert.alert("분석 실패", "문제를 분석할 수 없습니다.");
         return;
@@ -147,7 +147,7 @@ export default function ExploreScreen() {
       });
 
       const solutionData = solveResponse.data || {};
-      
+
       // 결과 화면으로 이동
       router.replace({
         pathname: "/(tabs)/result",
@@ -179,8 +179,6 @@ export default function ExploreScreen() {
   const goToHome = () => {
     router.replace("/");
   };
-
-
 
   // 슬라이드 애니메이션 함수들
   const openSettingsModal = () => {
@@ -302,6 +300,7 @@ export default function ExploreScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
+
               {/* 분석 버튼 */}
               <TouchableOpacity
                 style={styles.uploadButton}
@@ -383,7 +382,7 @@ export default function ExploreScreen() {
                     },
                   ]}
                 >
-                  분석 중...
+                  분석 및 해결책 생성 중...
                 </Text>
               </View>
             </ScrollView>
