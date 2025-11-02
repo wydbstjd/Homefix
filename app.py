@@ -73,22 +73,13 @@ async def analyze(data: ImageBase64Request):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"이미지 처리 실패: {str(e)}")
 
-    # 모델로 문제 유형만 예측 (위치는 반환하지 않음)
-    predicted_problem, _predicted_location_ignored = run_pipeline(image, model=model)
-    print("문제:", predicted_problem)
-
-    # 문제 인덱스 기반으로 유효 위치 옵션 계산
-    try:
-        problem_idx = problems.index(predicted_problem)
-    except ValueError:
-        raise HTTPException(status_code=500, detail="알 수 없는 문제 라벨")
-
-    valid_indices = valid_location_scope.get(problem_idx, [])
-    location_options = [inv_location_map[i] for i in valid_indices]
+    # 모델로 문제와 위치를 모두 예측
+    predicted_problem, predicted_location = run_pipeline(image, model=model)
+    print("문제:", predicted_problem, "위치:", predicted_location)
 
     return {
         "problem": predicted_problem,
-        "location_options": location_options,
+        "location": predicted_location,
     }
 
 @app.post("/chat/")

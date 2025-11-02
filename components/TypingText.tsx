@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { Text } from "react-native";
+import { Text, TextStyle } from "react-native";
 import { renderFormattedText } from "@/utils/textFormatting";
+
+interface TypingTextProps {
+  text: string;
+  speed?: number;
+  onComplete?: () => void;
+  style?: TextStyle | TextStyle[];
+}
 
 export default function TypingText({
   text,
-  speed = 50,
+  speed = 20,
   onComplete,
   style,
 }: TypingTextProps) {

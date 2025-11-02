@@ -223,7 +223,7 @@ export const apiConfig = new ApiConfig();
 export const createApiClient = () => {
   return axios.create({
     baseURL: apiConfig.getBaseUrl(),
-    timeout: 30000, // 60초로 증가 (GPT 응답 생성 시간 여유 확보)
+    timeout: 30000, // 30초로 증가 (GPT 응답 생성 시간 여유 확보)
     headers: {
       "Content-Type": "application/json",
     },

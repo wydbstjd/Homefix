@@ -118,18 +118,29 @@ def process_user_message(user_message: str, is_new_topic: bool = False) -> Tuple
     
     # 추가 질문을 기다리는 중인지 확인
     if conversation_manager.waiting_for_clarification:
-        is_specific, _ = is_specific_content(user_message)
+        # 이전 질문과 현재 답변을 결합한 통합 메시지 생성
+        original_question = conversation_manager.user_original_question or ""
+        
+        # GPT를 사용해서 자연스러운 문장 생성
+        try:
+            from .generator import generate_natural_query
+            combined_message = generate_natural_query(original_question, user_message)
+        except Exception as e:
+            # 에러 발생 시 기본 방식으로 결합
+            combined_message = f"{original_question} {user_message}"
+        
+        # 결합된 메시지의 구체성 판단
+        is_specific, _ = is_specific_content(combined_message)
         
         if is_specific:
             # 구체적인 답변을 받았으므로 최종 답변 생성
-            specific_query = create_specific_query(user_message)
             # 대화 기록에 추가
-            conversation_manager.add_to_history(user_message, specific_query)
+            conversation_manager.add_to_history(user_message, combined_message)
             conversation_manager.reset()  # 대화 상태만 초기화 (history 유지)
-            return specific_query, True, False
+            return combined_message, True, False
         else:
             # 여전히 구체적이지 않은 답변
-            follow_up = "더 구체적인 정보를 알려주세요."
+            follow_up = "더 구체적인 정보를 알려주세요. 예를 들어, 어디에서 어떤 문제가 발생했는지 알려주시면 더 정확한 답변을 드릴 수 있습니다."
             conversation_manager.add_to_history(user_message, follow_up)
             return follow_up, False, False
     

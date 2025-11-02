@@ -36,9 +36,6 @@ export default function ExploreScreen() {
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [showImagePicker, setShowImagePicker] = useState(false); // 처음에는 모달 숨김
   const [isLoading, setIsLoading] = useState(false);
-  const [predictedProblem, setPredictedProblem] = useState<string | null>(null);
-  const [locationOptions, setLocationOptions] = useState<string[]>([]);
-  const [solving, setSolving] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState(false);
   const slideAnim = useRef(new Animated.Value(-panelWidth)).current; // 왼쪽에서 시작
   const isFocused = useIsFocused();
@@ -57,20 +54,14 @@ export default function ExploreScreen() {
       // 포커스될 때 초기화 (홈에서 진입 시 이전 상태 제거)
       setSelectedImageUri(null);
       setBase64Data(null);
-      setPredictedProblem(null);
-      setLocationOptions([]);
       setIsLoading(false);
-      setSolving(false);
       setShowImagePicker(params.showModal === "true");
 
       return () => {
         // 블러될 때도 초기화 (다음 진입 시 잔상 방지)
         setSelectedImageUri(null);
         setBase64Data(null);
-        setPredictedProblem(null);
-        setLocationOptions([]);
         setIsLoading(false);
-        setSolving(false);
         setShowImagePicker(false);
       };
     }, [params.showModal])
@@ -128,23 +119,45 @@ export default function ExploreScreen() {
   };
 
   const uploadImage = async () => {
-    if (!base64Data) return;
+    if (!base64Data || !selectedImageUri) return;
 
     setIsLoading(true);
     try {
       console.log("업로드할 base64 길이:", base64Data?.length);
       const apiClient = createApiClient();
 
-      // 이미지 분석 -> 문제만 받고 위치 옵션 제공
-      const response = await apiClient.post("/analyze/", {
+      // 이미지 분석 -> 문제와 위치를 모두 예측
+      const analyzeResponse = await apiClient.post("/analyze/", {
         image_base64: base64Data,
       });
 
-      const { problem, location_options } = response.data || {};
-      setPredictedProblem(problem || null);
-      setLocationOptions(
-        Array.isArray(location_options) ? location_options : []
-      );
+      const { problem, location } = analyzeResponse.data || {};
+      
+      if (!problem || !location) {
+        Alert.alert("분석 실패", "문제를 분석할 수 없습니다.");
+        return;
+      }
+
+      console.log("분석 결과 - 문제:", problem, "위치:", location);
+
+      // 바로 해결책 생성
+      const solveResponse = await apiClient.post("/solve/", {
+        problem,
+        location,
+      });
+
+      const solutionData = solveResponse.data || {};
+      
+      // 결과 화면으로 이동
+      router.replace({
+        pathname: "/(tabs)/result",
+        params: {
+          problem: solutionData.problem || problem,
+          location,
+          solution: solutionData.solution || "해결책 생성에 실패했습니다.",
+          user_image_uri: selectedImageUri,
+        },
+      });
     } catch (error: any) {
       console.error("❌ axios 에러:", error?.message || error);
       Alert.alert("업로드 실패", "서버에 연결할 수 없습니다.");
@@ -156,8 +169,6 @@ export default function ExploreScreen() {
   const removeImage = () => {
     setSelectedImageUri(null);
     setBase64Data(null);
-    setPredictedProblem(null);
-    setLocationOptions([]);
     setShowImagePicker(true); // 이미지 선택 모달 다시 표시
   };
 
@@ -169,32 +180,7 @@ export default function ExploreScreen() {
     router.replace("/");
   };
 
-  const handleSelectLocation = async (location: string) => {
-    if (!predictedProblem) return;
-    try {
-      setSolving(true);
-      const apiClient = createApiClient();
-      const res = await apiClient.post("/solve/", {
-        problem: predictedProblem,
-        location,
-      });
-      const data = res.data || {};
-      router.replace({
-        pathname: "/(tabs)/result",
-        params: {
-          problem: data.problem || predictedProblem,
-          location,
-          solution: data.solution || "해결책 생성에 실패했습니다.",
-          user_image_uri: selectedImageUri || "",
-        },
-      });
-    } catch (e: any) {
-      console.error("❌ 해결책 생성 실패:", e?.message || e);
-      Alert.alert("오류", "해결책을 생성하는 데 실패했습니다.");
-    } finally {
-      setSolving(false);
-    }
-  };
+
 
   // 슬라이드 애니메이션 함수들
   const openSettingsModal = () => {
@@ -316,92 +302,21 @@ export default function ExploreScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
-
-              {/* 문제 미예측 상태: 분석 버튼 */}
-              {!predictedProblem && (
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={uploadImage}
-                  disabled={isLoading}
-                >
-                  <Text
-                    style={[
-                      styles.uploadButtonText,
-                      { fontSize: 18 * fontSizeMultiplier },
-                    ]}
-                  >
-                    분석하기
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {/* 문제 예측 완료: 위치 선택 버튼들 */}
-              {predictedProblem && (
-                <View
+              {/* 분석 버튼 */}
+              <TouchableOpacity
+                style={styles.uploadButton}
+                onPress={uploadImage}
+                disabled={isLoading}
+              >
+                <Text
                   style={[
-                    styles.locationCard,
-                    { borderColor: themeColors.text },
+                    styles.uploadButtonText,
+                    { fontSize: 18 * fontSizeMultiplier },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.locationTitle,
-                      {
-                        color: themeColors.text,
-                        fontSize: 18 * fontSizeMultiplier,
-                      },
-                    ]}
-                  >
-                    문제: {predictedProblem}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.locationSubtitle,
-                      {
-                        color: themeColors.text,
-                        fontSize: 14 * fontSizeMultiplier,
-                      },
-                    ]}
-                  >
-                    위치를 선택하세요
-                  </Text>
-                  <View style={styles.locationButtonsWrap}>
-                    {locationOptions.map((loc) => (
-                      <TouchableOpacity
-                        key={loc}
-                        style={[
-                          styles.locationButton,
-                          { borderColor: themeColors.text },
-                        ]}
-                        onPress={() => handleSelectLocation(loc)}
-                        disabled={solving}
-                      >
-                        <Text
-                          style={[
-                            styles.locationButtonText,
-                            { color: themeColors.text },
-                          ]}
-                        >
-                          {loc}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  {solving && (
-                    <View style={styles.solvingBox}>
-                      <ActivityIndicator size="small" color="#007AFF" />
-                      <Text
-                        style={[
-                          styles.solvingText,
-                          { color: themeColors.text },
-                        ]}
-                      >
-                        해결책 생성 중…
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
+                  분석하기
+                </Text>
+              </TouchableOpacity>
             </ScrollView>
           </>
         )}
@@ -742,48 +657,5 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 16,
     textAlign: "center",
-  },
-  // 위치 선택 UI
-  locationCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 12,
-  },
-  locationTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  locationSubtitle: {
-    fontSize: 14,
-    marginBottom: 12,
-    opacity: 0.9,
-  },
-  locationButtonsWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  locationButton: {
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 6,
-    marginBottom: 8,
-  },
-  locationButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  solvingBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 12,
-  },
-  solvingText: {
-    fontSize: 14,
   },
 });
