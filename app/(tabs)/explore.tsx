@@ -131,14 +131,40 @@ export default function ExploreScreen() {
         image_base64: base64Data,
       });
 
-      const { problem, location } = analyzeResponse.data || {};
+      const { problem, location, message } =
+        analyzeResponse.data || {};
 
+      // Threshold 미달 시 (관련 없는 이미지)
       if (!problem || !location) {
-        Alert.alert("분석 실패", "문제를 분석할 수 없습니다.");
+        Alert.alert(
+          "문제를 감지할 수 없습니다",
+          message ||
+            "명확한 문제를 감지하지 못했습니다. 다른 각도에서 촬영하거나 채팅으로 문의해주세요.",
+          [
+            {
+              text: "다시 촬영",
+              onPress: () => {
+                setShowImagePicker(true);
+                setSelectedImageUri(null);
+                setBase64Data(null);
+              },
+            },
+            {
+              text: "채팅으로 문의",
+              onPress: () => router.push("/(tabs)/chat"),
+              style: "default",
+            },
+          ]
+        );
         return;
       }
 
-      console.log("분석 결과 - 문제:", problem, "위치:", location);
+      console.log(
+        "분석 결과 - 문제:",
+        problem,
+        "위치:",
+        location
+      );
 
       // 바로 해결책 생성
       const solveResponse = await apiClient.post("/solve/", {
