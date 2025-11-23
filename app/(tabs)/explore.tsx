@@ -37,7 +37,10 @@ export default function ExploreScreen() {
   const [showImagePicker, setShowImagePicker] = useState(false); // 처음에는 모달 숨김
   const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showRecognitionFailed, setShowRecognitionFailed] = useState(false);
+  const [failedMessage, setFailedMessage] = useState("");
   const slideAnim = useRef(new Animated.Value(-panelWidth)).current; // 왼쪽에서 시작
+  const modalFadeAnim = useRef(new Animated.Value(0)).current; // 모달 페이드 애니메이션
   const isFocused = useIsFocused();
 
   // 홈에서 버튼을 누르면 모달 표시
@@ -136,26 +139,15 @@ export default function ExploreScreen() {
 
       // Threshold 미달 시 (관련 없는 이미지)
       if (!problem || !location) {
-        Alert.alert(
-          "문제를 감지할 수 없습니다",
-          message ||
-            "명확한 문제를 감지하지 못했습니다. 다른 각도에서 촬영하거나 채팅으로 문의해주세요.",
-          [
-            {
-              text: "다시 촬영",
-              onPress: () => {
-                setShowImagePicker(true);
-                setSelectedImageUri(null);
-                setBase64Data(null);
-              },
-            },
-            {
-              text: "채팅으로 문의",
-              onPress: () => router.push("/(tabs)/chat"),
-              style: "default",
-            },
-          ]
-        );
+        setFailedMessage(message || "사진을 다시 찍거나 채팅으로 물어보세요");
+        setShowRecognitionFailed(true);
+        // 모달 애니메이션 시작
+        Animated.timing(modalFadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+        setIsLoading(false);
         return;
       }
 
@@ -514,6 +506,154 @@ export default function ExploreScreen() {
           onClose={closeSettingsModal}
           slideAnim={slideAnim}
         />
+
+        {/* 문제 인식 실패 커스텀 모달 */}
+        <Modal
+          visible={showRecognitionFailed}
+          transparent={true}
+          animationType="none"
+          onRequestClose={() => {
+            Animated.timing(modalFadeAnim, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }).start(() => setShowRecognitionFailed(false));
+          }}
+        >
+          <Animated.View
+            style={[
+              styles.customModalOverlay,
+              {
+                opacity: modalFadeAnim,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.customModalBackdrop}
+              activeOpacity={1}
+              onPress={() => {
+                Animated.timing(modalFadeAnim, {
+                  toValue: 0,
+                  duration: 200,
+                  useNativeDriver: true,
+                }).start(() => setShowRecognitionFailed(false));
+              }}
+            >
+              <TouchableOpacity
+                activeOpacity={1}
+                onPress={(e) => e.stopPropagation()}
+                style={[
+                  styles.customModalContent,
+                  { backgroundColor: themeColors.cardBackground },
+                ]}
+              >
+                {/* 아이콘 영역 */}
+                <View style={styles.customModalIconContainer}>
+                  <View
+                    style={[
+                      styles.customModalIconCircle,
+                      { backgroundColor: "#ff6b6b" },
+                    ]}
+                  >
+                    <View style={styles.customModalIconInner}>
+                      <View style={styles.customModalIconLine1} />
+                      <View style={styles.customModalIconLine2} />
+                    </View>
+                  </View>
+                </View>
+
+                {/* 제목 */}
+                <Text
+                  style={[
+                    styles.customModalTitle,
+                    {
+                      color: themeColors.text,
+                      fontSize: 22 * fontSizeMultiplier,
+                    },
+                  ]}
+                >
+                  문제를 인식하지 못했어요
+                </Text>
+
+                {/* 메시지 */}
+                <Text
+                  style={[
+                    styles.customModalMessage,
+                    {
+                      color: themeColors.text,
+                      fontSize: 16 * fontSizeMultiplier,
+                    },
+                  ]}
+                >
+                  {failedMessage}
+                </Text>
+
+                {/* 버튼 영역 */}
+                <View style={styles.customModalButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.customModalButton,
+                      styles.customModalButtonSecondary,
+                      { borderColor: themeColors.borderColor || "#e0e0e0" },
+                    ]}
+                    onPress={() => {
+                      Animated.timing(modalFadeAnim, {
+                        toValue: 0,
+                        duration: 200,
+                        useNativeDriver: true,
+                      }).start(() => {
+                        setShowRecognitionFailed(false);
+                        setShowImagePicker(true);
+                        setSelectedImageUri(null);
+                        setBase64Data(null);
+                      });
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.customModalButtonTextSecondary,
+                        {
+                          color: themeColors.text,
+                          fontSize: 16 * fontSizeMultiplier,
+                        },
+                      ]}
+                    >
+                      다시 촬영
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.customModalButton,
+                      styles.customModalButtonPrimary,
+                    ]}
+                    onPress={() => {
+                      Animated.timing(modalFadeAnim, {
+                        toValue: 0,
+                        duration: 200,
+                        useNativeDriver: true,
+                      }).start(() => {
+                        setShowRecognitionFailed(false);
+                        router.push("/(tabs)/chat");
+                      });
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.customModalButtonTextPrimary,
+                        {
+                          fontSize: 16 * fontSizeMultiplier,
+                        },
+                      ]}
+                    >
+                      채팅으로 문의
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </Animated.View>
+        </Modal>
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -682,5 +822,113 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 16,
     textAlign: "center",
+  },
+  // 커스텀 모달 스타일
+  customModalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  customModalBackdrop: {
+    flex: 1,
+    width: "100%",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  customModalContent: {
+    width: "85%",
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  customModalIconContainer: {
+    marginBottom: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+  },
+  customModalIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ff6b6b",
+  },
+  customModalIconInner: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  customModalIconLine1: {
+    position: "absolute",
+    width: 30,
+    height: 4,
+    backgroundColor: "white",
+    borderRadius: 2,
+    transform: [{ rotate: "45deg" }],
+  },
+  customModalIconLine2: {
+    position: "absolute",
+    width: 30,
+    height: 4,
+    backgroundColor: "white",
+    borderRadius: 2,
+    transform: [{ rotate: "-45deg" }],
+  },
+  customModalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 12,
+    marginTop: 4,
+    textAlign: "center",
+    width: "100%",
+  },
+  customModalMessage: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 22,
+    opacity: 0.8,
+  },
+  customModalButtons: {
+    width: "100%",
+    flexDirection: "row",
+    gap: 12,
+  },
+  customModalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  customModalButtonSecondary: {
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
+  },
+  customModalButtonPrimary: {
+    backgroundColor: "#007AFF",
+  },
+  customModalButtonTextSecondary: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  customModalButtonTextPrimary: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
   },
 });

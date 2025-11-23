@@ -374,6 +374,36 @@ export default function ResultScreen() {
               </View>
             )}
           </View>
+
+          {/* 채팅으로 물어보기 섹션 */}
+          <View
+            style={[
+              styles.resultCard,
+              { backgroundColor: themeColors.cardBackground },
+            ]}
+          >
+            <Text
+              style={[
+                styles.inquiryText,
+                { color: themeColors.text, fontSize: 16 * fontSizeMultiplier },
+              ]}
+            >
+              원하는 문제와 해결책이 아닌가요?
+            </Text>
+            <TouchableOpacity
+              style={styles.chatButton}
+              onPress={() => router.push("/(tabs)/chat")}
+            >
+              <Text
+                style={[
+                  styles.chatButtonText,
+                  { fontSize: 16 * fontSizeMultiplier },
+                ]}
+              >
+                채팅으로 물어보기
+              </Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
 
         {/* 설정 모달 */}
@@ -763,6 +793,23 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
     fontSize: 12,
     color: "#3498db",
+  },
+  // 채팅으로 물어보기 섹션
+  inquiryText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  chatButton: {
+    backgroundColor: "#007AFF",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+  },
+  chatButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   // 글자크기 토글 스타일
   fontSizeButton: {

@@ -96,11 +96,9 @@ __all__ = [
     'valid_location_scope',
 ]
 
+# 추론용 transform (랜덤 증강 제거 - 일관된 결과를 위해)
 transform = transforms.Compose([
     transforms.Resize((384, 384), interpolation=InterpolationMode.BILINEAR),
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(15),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
     transforms.ToTensor(),
     transforms.Normalize([0.485,0.456,0.406],[0.229,0.224,0.225])
 ])
@@ -158,7 +156,7 @@ def predict_image(models_dict, image_path_or_pil):
         image_path_or_pil: 이미지 파일 경로 또는 PIL Image 객체
         
     Returns:
-        tuple: (문제 인덱스, 위치 인덱스 (해당 문제 내에서의 인덱스))
+        tuple: (문제 인덱스, 위치 인덱스 (해당 문제 내에서의 인덱스), 최대 로짓 값)
     """
     # 이미지 로딩 및 전처리
     if isinstance(image_path_or_pil, str):
@@ -172,6 +170,8 @@ def predict_image(models_dict, image_path_or_pil):
     with torch.no_grad():
         problem_output = models_dict['problem_model'](image_tensor)
         pred_problem_idx = torch.argmax(problem_output, dim=1).item()
+        # argmax한 로짓 값 추출 (softmax 없이)
+        max_logit = problem_output[0][pred_problem_idx].item()
     
     # 예측된 문제명
     pred_problem_name = problems[pred_problem_idx]
@@ -182,7 +182,7 @@ def predict_image(models_dict, image_path_or_pil):
         location_output = location_model(image_tensor)
         pred_location_idx = torch.argmax(location_output, dim=1).item()
     
-    return pred_problem_idx, pred_location_idx
+    return pred_problem_idx, pred_location_idx, max_logit
 
 
 # ------------------------- 파이프라인 함수 ------------------------- #
@@ -195,18 +195,18 @@ def run_pipeline(image_path_or_pil, model=None):
         model: 모델 딕셔너리 (None이면 자동 로딩)
         
     Returns:
-        tuple: (문제명, 위치명)
+        tuple: (문제명, 위치명, 최대 로짓 값)
     """
     # 모델 로딩
     if model is None:
         model = load_models()
     
     # 예측 수행
-    pred_problem_idx, pred_location_idx = predict_image(model, image_path_or_pil)
+    pred_problem_idx, pred_location_idx, max_logit = predict_image(model, image_path_or_pil)
     
     # 인덱스를 문자열로 변환
     pred_problem_name = problems[pred_problem_idx]
     pred_location_name = location_labels[pred_problem_name][pred_location_idx]
     
-    return pred_problem_name, pred_location_name
+    return pred_problem_name, pred_location_name, max_logit
 

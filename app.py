@@ -13,7 +13,13 @@ from pydantic import BaseModel
 import io, base64, socket
 import os
 import re
+import warnings
 from googleapiclient.discovery import build
+
+# TensorFlow 관련 경고 필터링 (sentence_transformers에서 간접 사용)
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'  # oneDNN 경고 비활성화
+warnings.filterwarnings('ignore', category=UserWarning, module='tensorflow')
+warnings.filterwarnings('ignore', message='.*deprecated.*')
 
 app = FastAPI()
 
@@ -73,9 +79,23 @@ async def analyze(data: ImageBase64Request):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"이미지 처리 실패: {str(e)}")
 
+    # 문제 분류 임계값 설정 (로짓 값 기준)
+    # 로짓 값 의미: 0 근처=불확실, 1~2=약간 확신, 2~3=적당한 확신, 5+=매우 높은 확신
+    # 추천 범위: 1.5~2.5 (2.0이 균형 잡힌 기준)
+    PROBLEM_CONFIDENCE_THRESHOLD = 6.0
+
     # 모델로 문제와 위치를 모두 예측
-    predicted_problem, predicted_location = run_pipeline(image, model=model)
-    print("문제:", predicted_problem, "위치:", predicted_location)
+    predicted_problem, predicted_location, max_logit = run_pipeline(image, model=model)
+    print(f"문제: {predicted_problem}, 위치: {predicted_location}, 최대 로짓 값: {max_logit:.3f}")
+
+    # 임계값 미달 시 None 반환
+    if max_logit < PROBLEM_CONFIDENCE_THRESHOLD:
+        print(f"⚠️ 최대 로짓 값 {max_logit:.3f}가 임계값 {PROBLEM_CONFIDENCE_THRESHOLD} 미만")
+        return {
+            "problem": None,
+            "location": None,
+            "message": "사진을 다시 찍거나 채팅으로 물어보세요",
+        }
 
     return {
         "problem": predicted_problem,
