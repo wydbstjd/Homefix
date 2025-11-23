@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef } from "react";
 import {
   Modal,
   View,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  Linking,
 } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -26,8 +27,10 @@ export default function SettingsModal({
   slideAnim,
   showInquiry = true,
 }: SettingsModalProps) {
-  const { themeColors, fontSize, setFontSize, isDarkMode, toggleDarkMode } =
+  const { themeColors, fontSize, setFontSize, isDarkMode, toggleDarkMode, fontSizeMultiplier } =
     useTheme();
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const inquiryModalFadeAnim = useRef(new Animated.Value(0)).current;
 
   return (
     <Modal
@@ -179,6 +182,14 @@ export default function SettingsModal({
                     styles.settingsItem,
                     { borderBottomColor: themeColors.borderColor },
                   ]}
+                  onPress={() => {
+                    setShowInquiryModal(true);
+                    Animated.timing(inquiryModalFadeAnim, {
+                      toValue: 1,
+                      duration: 300,
+                      useNativeDriver: true,
+                    }).start();
+                  }}
                 >
                   <View style={styles.settingsIcon}>
                     <View style={styles.inquiryIcon}>
@@ -207,6 +218,172 @@ export default function SettingsModal({
           </Animated.View>
         </TouchableOpacity>
       </TouchableOpacity>
+
+      {/* 문의하기 커스텀 모달 */}
+      <Modal
+        visible={showInquiryModal}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => {
+          Animated.timing(inquiryModalFadeAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => setShowInquiryModal(false));
+        }}
+      >
+        <Animated.View
+          style={[
+            styles.inquiryModalOverlay,
+            {
+              opacity: inquiryModalFadeAnim,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.inquiryModalBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              Animated.timing(inquiryModalFadeAnim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+              }).start(() => setShowInquiryModal(false));
+            }}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+              style={[
+                styles.inquiryModalContent,
+                { backgroundColor: themeColors.cardBackground },
+              ]}
+            >
+              {/* 아이콘 영역 */}
+              <View style={styles.inquiryModalIconContainer}>
+                <View
+                  style={[
+                    styles.inquiryModalIconCircle,
+                    { backgroundColor: "#007AFF" },
+                  ]}
+                >
+                  <Text style={styles.inquiryModalIconText}>✉️</Text>
+                </View>
+              </View>
+
+              {/* 제목 */}
+              <Text
+                style={[
+                  styles.inquiryModalTitle,
+                  {
+                    color: themeColors.text,
+                    fontSize: 22 * fontSizeMultiplier,
+                  },
+                ]}
+              >
+                문의하기
+              </Text>
+
+              {/* 이메일 주소 */}
+              <View style={styles.inquiryModalEmailContainer}>
+                <Text
+                  style={[
+                    styles.inquiryModalEmailLabel,
+                    {
+                      color: themeColors.text,
+                      fontSize: 14 * fontSizeMultiplier,
+                    },
+                  ]}
+                >
+                  이메일 주소
+                </Text>
+                <Text
+                  style={[
+                    styles.inquiryModalEmail,
+                    {
+                      color: "#007AFF",
+                      fontSize: 18 * fontSizeMultiplier,
+                    },
+                  ]}
+                >
+                  homefix@gmail.com
+                </Text>
+              </View>
+
+              {/* 메시지 */}
+              <Text
+                style={[
+                  styles.inquiryModalMessage,
+                  {
+                    color: themeColors.text,
+                    fontSize: 16 * fontSizeMultiplier,
+                  },
+                ]}
+              >
+                위 이메일 주소로 문의해주세요.
+              </Text>
+
+              {/* 버튼 영역 */}
+              <View style={styles.inquiryModalButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.inquiryModalButton,
+                    styles.inquiryModalButtonSecondary,
+                    { borderColor: themeColors.borderColor || "#e0e0e0" },
+                  ]}
+                  onPress={() => {
+                    Animated.timing(inquiryModalFadeAnim, {
+                      toValue: 0,
+                      duration: 200,
+                      useNativeDriver: true,
+                    }).start(() => setShowInquiryModal(false));
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.inquiryModalButtonTextSecondary,
+                      {
+                        color: themeColors.text,
+                        fontSize: 16 * fontSizeMultiplier,
+                      },
+                    ]}
+                  >
+                    닫기
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.inquiryModalButton,
+                    styles.inquiryModalButtonPrimary,
+                  ]}
+                  onPress={() => {
+                    Linking.openURL("mailto:homefix@gmail.com").catch(() => {
+                      // 이메일 앱을 열 수 없을 때는 그냥 모달만 닫기
+                    });
+                    Animated.timing(inquiryModalFadeAnim, {
+                      toValue: 0,
+                      duration: 200,
+                      useNativeDriver: true,
+                    }).start(() => setShowInquiryModal(false));
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.inquiryModalButtonTextPrimary,
+                      {
+                        fontSize: 16 * fontSizeMultiplier,
+                      },
+                    ]}
+                  >
+                    이메일 앱 열기
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Animated.View>
+      </Modal>
     </Modal>
   );
 }
@@ -343,5 +520,110 @@ const styles = StyleSheet.create({
     width: 12,
     height: 2,
     borderRadius: 1,
+  },
+  // 문의하기 모달 스타일
+  inquiryModalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  inquiryModalBackdrop: {
+    flex: 1,
+    width: "100%",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  inquiryModalContent: {
+    width: "85%",
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  inquiryModalIconContainer: {
+    marginBottom: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+  },
+  inquiryModalIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#007AFF",
+  },
+  inquiryModalIconText: {
+    fontSize: 48,
+    lineHeight: 48,
+    textAlign: "center",
+  },
+  inquiryModalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 20,
+    marginTop: 4,
+    textAlign: "center",
+    width: "100%",
+  },
+  inquiryModalEmailContainer: {
+    width: "100%",
+    marginBottom: 16,
+    alignItems: "center",
+  },
+  inquiryModalEmailLabel: {
+    fontSize: 14,
+    marginBottom: 8,
+    opacity: 0.7,
+  },
+  inquiryModalEmail: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#007AFF",
+  },
+  inquiryModalMessage: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 22,
+    opacity: 0.8,
+  },
+  inquiryModalButtons: {
+    width: "100%",
+    flexDirection: "row",
+    gap: 12,
+  },
+  inquiryModalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inquiryModalButtonSecondary: {
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
+  },
+  inquiryModalButtonPrimary: {
+    backgroundColor: "#007AFF",
+  },
+  inquiryModalButtonTextSecondary: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  inquiryModalButtonTextPrimary: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
   },
 });

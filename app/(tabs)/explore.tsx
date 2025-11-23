@@ -43,14 +43,6 @@ export default function ExploreScreen() {
   const modalFadeAnim = useRef(new Animated.Value(0)).current; // 모달 페이드 애니메이션
   const isFocused = useIsFocused();
 
-  // 홈에서 버튼을 누르면 모달 표시
-  useEffect(() => {
-    if (!isFocused) return;
-    if (params.showModal === "true") {
-      setShowImagePicker(true);
-    }
-  }, [isFocused, params.showModal]);
-
   // 화면 포커스/블러 시 상태 초기화: 항상 깨끗한 시작 보장
   useFocusEffect(
     React.useCallback(() => {
@@ -58,7 +50,7 @@ export default function ExploreScreen() {
       setSelectedImageUri(null);
       setBase64Data(null);
       setIsLoading(false);
-      setShowImagePicker(params.showModal === "true");
+      setShowImagePicker(false);
 
       return () => {
         // 블러될 때도 초기화 (다음 진입 시 잔상 방지)
@@ -67,22 +59,29 @@ export default function ExploreScreen() {
         setIsLoading(false);
         setShowImagePicker(false);
       };
-    }, [params.showModal])
+    }, [])
   );
 
+  // 홈에서 버튼을 누르면 권한 확인 후 모달 표시
   useEffect(() => {
-    // 카메라 및 갤러리 권한 요청
-    (async () => {
-      const { status: cameraStatus } =
-        await ImagePicker.requestCameraPermissionsAsync();
-      const { status: mediaStatus } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!isFocused) return;
+    if (params.showModal === "true") {
+      // 권한 확인 후 모달 표시
+      (async () => {
+        const { status: cameraStatus } =
+          await ImagePicker.requestCameraPermissionsAsync();
+        const { status: mediaStatus } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-      if (cameraStatus !== "granted" || mediaStatus !== "granted") {
-        Alert.alert("카메라 및 갤러리 접근 권한이 필요합니다.");
-      }
-    })();
-  }, []);
+        if (cameraStatus !== "granted" || mediaStatus !== "granted") {
+          Alert.alert("카메라 및 갤러리 접근 권한이 필요합니다.");
+        } else {
+          // 권한이 허용되면 모달 표시
+          setShowImagePicker(true);
+        }
+      })();
+    }
+  }, [isFocused, params.showModal]);
 
   const convertToJpegBase64 = async (uri: string) => {
     const result = await ImageManipulator.manipulateAsync(uri, [], {

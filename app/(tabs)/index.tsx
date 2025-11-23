@@ -56,9 +56,6 @@ export default function HomeScreen() {
     router.push("/(tabs)/chat");
   };
 
-  const goToHome = () => {
-    // 이미 홈 화면이므로 아무것도 하지 않음
-  };
 
   return (
     <SafeAreaProvider>
@@ -85,22 +82,6 @@ export default function HomeScreen() {
               />
               <View
                 style={[styles.menuLine, { backgroundColor: themeColors.text }]}
-              />
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.spacer} />
-
-          <TouchableOpacity style={styles.homeButton} onPress={goToHome}>
-            <View style={styles.homeIcon}>
-              <View
-                style={[
-                  styles.homeRoof,
-                  { borderBottomColor: themeColors.text },
-                ]}
-              />
-              <View
-                style={[styles.homeBase, { backgroundColor: themeColors.text }]}
               />
             </View>
           </TouchableOpacity>
