@@ -117,6 +117,14 @@ def chat_with_ai(user_message: str):
         dict: {"response": 답변, "is_specific": 구체성 여부, "supplies": 준비물 정보}
     """
     
+    # 관련 없는 질문인지 먼저 확인
+    from .generator import is_relevant_question
+    if not is_relevant_question(user_message):
+        return {
+            "response": "죄송합니다. 이 서비스는 집안 오염 및 문제 해결에 관련된 질문만 답변할 수 있습니다. 집안 오염 관련 문제를 질문해주세요.",
+            "is_specific": False
+        }
+    
     # 대화 처리
     response_message, is_final_answer, requires_context = process_user_message(user_message)
     
