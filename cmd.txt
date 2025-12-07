@@ -1,0 +1,27 @@
+npx expo start --clear
+
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+
+동일 wifi 접속해야 함.
+config 폴더 안 api.ts 파일에서 ip 수정필요 + 아래에 ip 목록에 추가도
+
+# GIt 로그 확인
+git log --oneline
+
+# Git 커밋
+git add . 
+
+# Git 메시지
+git commit -m "메시지"
+
+# 이전 커밋으로 되돌리기
+git reset --hard [코드 이름 a2c41ee]
+
+# 로컬 저장소와 원격 저장소 연결
+git remote add origin https://github.com/wydbstjd/Homefix.git
+
+# 브랜치 생성
+git checkout -b [브랜치명]
+
+# 깃허브 푸시
+git push origin [브랜치명]
